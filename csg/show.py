@@ -10,9 +10,13 @@ try:
     from OpenGL.GL import glEnd, glNormal3fv, glVertex3fv, glEndList, glCallList
     from OpenGL.GL import glPopMatrix, glFlush
     from OpenGL.GLUT import glutInit, glutSwapBuffers, glutPostRedisplay
-    from OpenGL.GLUT import glutInitWindowSize, glutCreateWindow
-    from OpenGL.GLUT import glutInitDisplayMode, GLUT_DEPTH, GLUT_DOUBLE, GLUT_RGBA
+    from OpenGL.GLUT import glutInitWindowSize, glutCreateWindow, glutSetOption
+    from OpenGL.GLUT import glutInitDisplayMode, GLUT_DEPTH, GLUT_DOUBLE
+    from OpenGL.GLUT import GLUT_RGBA, GLUT_ACTION_ON_WINDOW_CLOSE
+    from OpenGL.GLUT import GLUT_ACTION_CONTINUE_EXECUTION, GLUT_KEY_LEFT
+    from OpenGL.GLUT import GLUT_KEY_RIGHT, GLUT_KEY_DOWN, GLUT_KEY_UP
     from OpenGL.GLUT import glutDisplayFunc, glutKeyboardFunc, glutMainLoop
+    from OpenGL.GLUT import glutLeaveMainLoop, glutSpecialFunc
     from OpenGL.GLU import gluPerspective, gluLookAt
     _have_OpenGL = True
 except:
@@ -35,7 +39,8 @@ class TestRenderable:
         self.colors = []
         self.vnormals = []
         self.list = -1
-        self.rot = 0.0
+        self.rot_x = 0.0
+        self.rot_z = 0.0
         
         polygons = csg.toPolygons()
         
@@ -109,21 +114,29 @@ class TestRenderable:
 
         glPushMatrix()
         glTranslatef(0.0, 0.0, -1.0);
-        glRotatef(self.rot, 1.0, 0.0, 0.0);
-        glRotatef(self.rot, 0.0, 0.0, 1.0);
-        self.rot += 0.1
+        glRotatef(self.rot_x, 1.0, 0.0, 0.0);
+        glRotatef(self.rot_z, 0.0, 1.0, 0.0);
 
         self.render()
 
         glPopMatrix()
         glFlush()
         glutSwapBuffers()
-        glutPostRedisplay()
+        #glutPostRedisplay()
 
     def keypress(self, key, x, y):
-        print(key, x ,y)
         if key == b"q":
-            import sys;sys.exit()
+            glutLeaveMainLoop()
+    def special_keypress(self, key, x, y):
+        if key == GLUT_KEY_LEFT:
+            self.rot_z += 0.3
+        if key == GLUT_KEY_RIGHT:
+            self.rot_z -= 0.3
+        if key == GLUT_KEY_DOWN:
+            self.rot_x -= 0.3
+        if key == GLUT_KEY_UP:
+            self.rot_x += 0.3
+        glutPostRedisplay()
 
 def show_OpenGL(csg):
     if not _have_OpenGL:
@@ -132,10 +145,12 @@ def show_OpenGL(csg):
     
     glutInit()
     glutInitWindowSize(640,480)
-    glutCreateWindow("CSG Test")
+    renderable.win_id = glutCreateWindow("CSG Test")
+    glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION)
     glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA)
     glutDisplayFunc(renderable.display)
     glutKeyboardFunc(renderable.keypress)
+    glutSpecialFunc(renderable.special_keypress)
      
     renderable.init()
 
@@ -144,3 +159,4 @@ def show_OpenGL(csg):
 if __name__ == '__main__':
     a = CSG.cube()
     show_OpenGL(a)
+    print("Done")
