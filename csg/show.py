@@ -1,29 +1,33 @@
-from OpenGL.GL import glLightfv, GL_LIGHT0, GL_AMBIENT, GL_DIFFUSE
-from OpenGL.GL import GL_POSITION, GL_LIGHTING, GL_DEPTH_TEST, GL_PROJECTION
-from OpenGL.GL import GL_MODELVIEW, GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT
-from OpenGL.GL import GL_COMPILE, GL_FRONT, GL_SPECULAR, GL_SHININESS
-from OpenGL.GL import GL_POLYGON
-from OpenGL.GL import glEnable, glMatrixMode, glClear, glPushMatrix
-from OpenGL.GL import glTranslatef, glRotatef, glGenLists, glNewList
-from OpenGL.GL import glMaterialfv, glMaterialf, glColor4fv, glBegin
-from OpenGL.GL import glEnd, glNormal3fv, glVertex3fv, glEndList, glCallList
-from OpenGL.GL import glPopMatrix, glFlush
-from OpenGL.GLUT import glutInit, glutSwapBuffers, glutPostRedisplay
-from OpenGL.GLUT import glutInitWindowSize, glutCreateWindow
-from OpenGL.GLUT import glutInitDisplayMode, GLUT_DEPTH, GLUT_DOUBLE, GLUT_RGBA
-from OpenGL.GLUT import glutDisplayFunc, glutMainLoop
-from OpenGL.GLU import gluPerspective, gluLookAt
-
+try:
+    from OpenGL.GL import glLightfv, GL_LIGHT0, GL_AMBIENT, GL_DIFFUSE
+    from OpenGL.GL import GL_POSITION, GL_LIGHTING, GL_DEPTH_TEST, GL_PROJECTION
+    from OpenGL.GL import GL_MODELVIEW, GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT
+    from OpenGL.GL import GL_COMPILE, GL_FRONT, GL_SPECULAR, GL_SHININESS
+    from OpenGL.GL import GL_POLYGON
+    from OpenGL.GL import glEnable, glMatrixMode, glClear, glPushMatrix
+    from OpenGL.GL import glTranslatef, glRotatef, glGenLists, glNewList
+    from OpenGL.GL import glMaterialfv, glMaterialf, glColor4fv, glBegin
+    from OpenGL.GL import glEnd, glNormal3fv, glVertex3fv, glEndList, glCallList
+    from OpenGL.GL import glPopMatrix, glFlush
+    from OpenGL.GLUT import glutInit, glutSwapBuffers, glutPostRedisplay
+    from OpenGL.GLUT import glutInitWindowSize, glutCreateWindow
+    from OpenGL.GLUT import glutInitDisplayMode, GLUT_DEPTH, GLUT_DOUBLE, GLUT_RGBA
+    from OpenGL.GLUT import glutDisplayFunc, glutKeyboardFunc, glutMainLoop
+    from OpenGL.GLU import gluPerspective, gluLookAt
+    _have_OpenGL = True
+except:
+    _have_OpenGL = False
+    
 from csg.core import CSG
 from csg.geom import Vertex, Vector
 
-light_ambient = [0.3, 0.3, 0.3, 1.0]
-light_diffuse = [0.7, 0.7, 0.7, 1.0]  # Red diffuse light
-light_position = [100.0, 100.0, 100.0, 0.0]  # Infinite light location.
 
-rot = 0.0
 
 class TestRenderable:
+    light_ambient = [0.3, 0.3, 0.3, 1.0]
+    light_diffuse = [0.7, 0.7, 0.7, 1.0]  # Red diffuse light
+    light_position = [100.0, 100.0, 100.0, 0.0]  # Infinite light location.
+
     def __init__(self, csg):
         self.faces = []
         self.normals = []
@@ -31,6 +35,7 @@ class TestRenderable:
         self.colors = []
         self.vnormals = []
         self.list = -1
+        self.rot = 0.0
         
         polygons = csg.toPolygons()
         
@@ -59,6 +64,23 @@ class TestRenderable:
             ns.append([a for a in n])
         self.vnormals = ns
         
+    def init(self):
+        # Enable a single OpenGL light.
+        glLightfv(GL_LIGHT0, GL_AMBIENT, self.light_ambient)
+        glLightfv(GL_LIGHT0, GL_DIFFUSE, self.light_diffuse)
+        glLightfv(GL_LIGHT0, GL_POSITION, self.light_position)
+        glEnable(GL_LIGHT0);
+        glEnable(GL_LIGHTING);
+
+        # Use depth buffering for hidden surface elimination.
+        glEnable(GL_DEPTH_TEST);
+
+        # Setup the view of the cube.
+        glMatrixMode(GL_PROJECTION);
+        gluPerspective(40.0, 640./480., 1.0, 10.0);
+        glMatrixMode(GL_MODELVIEW);
+        gluLookAt(0.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.)
+        
     def render(self):
         if self.list < 0:
             self.list = glGenLists(1)
@@ -82,54 +104,40 @@ class TestRenderable:
             glEndList()
         glCallList(self.list)
         
-renderable = None
+    def display(self):
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-def init():
-    # Enable a single OpenGL light.
-    glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient)
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse)
-    glLightfv(GL_LIGHT0, GL_POSITION, light_position)
-    glEnable(GL_LIGHT0);
-    glEnable(GL_LIGHTING);
+        glPushMatrix()
+        glTranslatef(0.0, 0.0, -1.0);
+        glRotatef(self.rot, 1.0, 0.0, 0.0);
+        glRotatef(self.rot, 0.0, 0.0, 1.0);
+        self.rot += 0.1
 
-    # Use depth buffering for hidden surface elimination.
-    glEnable(GL_DEPTH_TEST);
+        self.render()
 
-    # Setup the view of the cube.
-    glMatrixMode(GL_PROJECTION);
-    gluPerspective(40.0, 640./480., 1.0, 10.0);
-    glMatrixMode(GL_MODELVIEW);
-    gluLookAt(0.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.)
-    
-def display():
-    global rot
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-    
-    glPushMatrix()
-    glTranslatef(0.0, 0.0, -1.0);
-    glRotatef(rot, 1.0, 0.0, 0.0);
-    glRotatef(rot, 0.0, 0.0, 1.0);
-    rot += 0.1
-    
-    renderable.render()
-    
-    glPopMatrix()
-    glFlush()
-    glutSwapBuffers()
-    glutPostRedisplay()
+        glPopMatrix()
+        glFlush()
+        glutSwapBuffers()
+        glutPostRedisplay()
 
+    def keypress(self, key, x, y):
+        print(key, x ,y)
+        if key == b"q":
+            import sys;sys.exit()
 
 def show_OpenGL(csg):
-    global renderable
+    if not _have_OpenGL:
+        raise RuntimeError("PyOpenGL not available")
     renderable = TestRenderable(csg)
     
     glutInit()
     glutInitWindowSize(640,480)
     glutCreateWindow("CSG Test")
     glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA)
-    glutDisplayFunc(display)
+    glutDisplayFunc(renderable.display)
+    glutKeyboardFunc(renderable.keypress)
      
-    init()
+    renderable.init()
 
     glutMainLoop()
     
