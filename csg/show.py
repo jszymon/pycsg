@@ -21,7 +21,11 @@ try:
     _have_OpenGL = True
 except:
     _have_OpenGL = False
-    
+
+
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from matplotlib.pyplot import gcf
+
 from csg.core import CSG
 from csg.geom import Vertex, Vector
 
@@ -155,8 +159,24 @@ def show_OpenGL(csg):
     renderable.init()
 
     glutMainLoop()
+
+def show_matplotlib(csg):
+    verts = []
+    polygons = csg.toPolygons()
+    for polygon in polygons:
+        poly_verts = list()
+        for v in polygon.vertices:
+            poly_verts.append((v.pos.x, v.pos.y, v.pos.z))
+        verts.append(poly_verts)
+    ax = gcf().add_subplot(111, projection='3d')
+    c = Poly3DCollection(verts)
+    c.set_edgecolor("black")
+    ax.add_collection3d(c)
     
 if __name__ == '__main__':
-    a = CSG.cube()
+    a = CSG.cube(radius=[0.5]*3)
+    from matplotlib.pyplot import show
+    show_matplotlib(a)
+    show()
     show_OpenGL(a)
     print("Done")
