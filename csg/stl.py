@@ -29,3 +29,25 @@ def read_ascii_stl(fname):
             raise RuntimeError("Wrong ASCII STL header")
         name = header[6:].strip()
         print("read stl", name)
+        while True:
+            l = f.readline().strip()
+            if l == "":
+                continue
+            if l.startswith("endsolid"):
+                if name != l[9:]:
+                    print("Warning: different names in 'solid'"
+                                           " and 'endsolid'")
+                break
+            if not l.startswith("facet normal "):
+                raise RuntimeError("Facet should start with 'facet normal'")
+            toks = l.split()
+            if len(toks) != 5:
+                raise RuntimeError("Wrong facet normal format")
+            normal = [float(ni) for ni in toks[2:]]
+            print("normal", normal)
+            l = f.readline().strip()
+            if l != "outer loop":
+                raise RuntimeError("Missing facer outer loop")
+        else:
+            raise RuntimeError("Missing 'endsolid'")
+
