@@ -18,19 +18,32 @@ class _contextlib_nullcontext(object):
     def __exit__(self, *excinfo):
         pass
 
+def _numbered_line_reader(f):
+    for li, l in enumerate(f):
+        yield li, l.strip()
+
+def _match_line(f, match):
+    for li, l in f:
+        if li != "": break
+    else:
+        raise RuntimeError("Unexpected end of file, expected " + str(match))
+    if l != match:
+        raise RuntimeError("Expected " + str(match) + " on line " + str(li))
+
 def read_ascii_stl(fname):
     if hasattr(fname, 'read'):
         f_ctx = _contextlib_nullcontext(filename)
     else:
         f_ctx = open(fname, 'r')
-    with f_ctx as f:
-        header = f.readline()
+    with f_ctx as fl:
+        f = _numbered_line_reader(fl)
+        li, header = next(f)
         if header[0:6].lower() != "solid ":
             raise RuntimeError("Wrong ASCII STL header")
         name = header[6:].strip()
         print("read stl", name)
         while True:
-            l = f.readline().strip()
+            li, l = next(f)
             if l == "":
                 continue
             if l.startswith("endsolid"):
@@ -45,9 +58,10 @@ def read_ascii_stl(fname):
                 raise RuntimeError("Wrong facet normal format")
             normal = [float(ni) for ni in toks[2:]]
             print("normal", normal)
-            l = f.readline().strip()
-            if l != "outer loop":
-                raise RuntimeError("Missing facer outer loop")
+            _match_line(f, "outer loop")
         else:
             raise RuntimeError("Missing 'endsolid'")
+        for li, l in f:
+            if l != "":
+                raise RuntimeError("Content after 'endsolid'")
 
