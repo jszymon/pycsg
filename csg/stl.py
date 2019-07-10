@@ -20,7 +20,7 @@ class _contextlib_nullcontext(object):
 
 def _numbered_line_reader(f):
     for li, l in enumerate(f):
-        yield li, l.strip()
+        yield li+1, l.strip()
 
 def _match_line(f, match):
     for li, l in f:
@@ -29,6 +29,21 @@ def _match_line(f, match):
         raise RuntimeError("Unexpected end of file, expected " + str(match))
     if l != match:
         raise RuntimeError("Expected " + str(match) + " on line " + str(li))
+def _parse_vector(f, match, raise_on_nonmatch=True):
+    for li, l in f:
+        if li != "": break
+    else:
+        if raise_on_nonmatch:
+            raise RuntimeError("Unexpected end of file, expected " + str(match))
+        return None, li, l
+    if not l.startswith(match):
+        raise RuntimeError("Expected '" + str(match) + "' on line " + str(li))
+    toks = l[len(match):].split()
+    if len(toks) != 3:
+        raise RuntimeError("A vector must have exactly 3 coordinates"
+                               " (line " + str(li) + ")")
+    vec = [float(x) for x in toks]
+    return vec, li, l
 
 def read_ascii_stl(fname):
     if hasattr(fname, 'read'):
@@ -43,20 +58,13 @@ def read_ascii_stl(fname):
         name = header[6:].strip()
         print("read stl", name)
         while True:
-            li, l = next(f)
-            if l == "":
-                continue
-            if l.startswith("endsolid"):
+            normal, li, l = _parse_vector(f, "facet normal ",
+                                              raise_on_nonmatch=False)
+            if normal is None and l.startswith("endsolid"):
                 if name != l[9:]:
                     print("Warning: different names in 'solid'"
                                            " and 'endsolid'")
                 break
-            if not l.startswith("facet normal "):
-                raise RuntimeError("Facet should start with 'facet normal'")
-            toks = l.split()
-            if len(toks) != 5:
-                raise RuntimeError("Wrong facet normal format")
-            normal = [float(ni) for ni in toks[2:]]
             print("normal", normal)
             _match_line(f, "outer loop")
         else:
