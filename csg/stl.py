@@ -37,8 +37,10 @@ def _parse_vector(f, match, raise_on_nonmatch=True):
             raise RuntimeError("Unexpected end of file, expected " + str(match))
         return None, li, l
     if not l.startswith(match):
-        raise RuntimeError("Expected '" + str(match) + "' on line " + str(li))
-    toks = l[len(match):].split()
+        if raise_on_nonmatch:
+            raise RuntimeError("Expected '" + str(match) + "' on line " + str(li))
+        return None, li, l
+    toks = l[len(match):].strip().split()
     if len(toks) != 3:
         raise RuntimeError("A vector must have exactly 3 coordinates"
                                " (line " + str(li) + ")")
@@ -58,15 +60,24 @@ def read_ascii_stl(fname):
         name = header[6:].strip()
         print("read stl", name)
         while True:
-            normal, li, l = _parse_vector(f, "facet normal ",
+            normal, li, l = _parse_vector(f, "facet normal",
                                               raise_on_nonmatch=False)
             if normal is None and l.startswith("endsolid"):
                 if name != l[9:]:
                     print("Warning: different names in 'solid'"
                                            " and 'endsolid'")
                 break
-            print("normal", normal)
             _match_line(f, "outer loop")
+            v1, li, l = _parse_vector(f, "vertex")
+            v2, li, l = _parse_vector(f, "vertex")
+            v3, li, l = _parse_vector(f, "vertex")
+            _match_line(f, "endloop")
+            _match_line(f, "endfacet")
+            print("facet")
+            print("  normal", normal)
+            print("  v1", v1)
+            print("  v2", v2)
+            print("  v3", v3)
         else:
             raise RuntimeError("Missing 'endsolid'")
         for li, l in f:
